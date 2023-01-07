@@ -1,5 +1,4 @@
 const { decryptCertificateFields, certifierSignCheckArgs, certifierCreateSignedCertificate } = require('authrite-utils')
-const { saveCertificate, loadCertificate } = require('../utils/databaseHelpers')
 
 const {
     certifierPrivateKey,
@@ -107,11 +106,6 @@ module.exports = {
         certifierPrivateKey,
         certificateType
       })
-
-      await saveCertificate(certificate, req.body.keyring)
-
-      const cert = await loadCertificate(certificate.serialNumber, certifierPrivateKey)
-      console.log(cert)
 
       // Returns signed cert to the requester
       return res.status(200).json(certificate)

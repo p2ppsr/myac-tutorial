@@ -11,11 +11,11 @@ Branches are used to provide quick access to the state of the code at each step 
 | Branch | Tutorial Sequence |
 |---|---|
 | start | Add certifier key and certificate type |
+| docs | Add public certifier documentation |
 | identify | Add certifier identify support |
 | create | Add certificate creation support |
 | confirm | Add certificate confirmation |
 | database | Add issued certificate database support |
-| docs | Add public certifier documentation |
 | deploy | Add Cloud Run deployment support |
 | master | Completed tutorial |
 
