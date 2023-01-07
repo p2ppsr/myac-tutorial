@@ -12,7 +12,7 @@
 //
 // The purpose of this certificate is to server as a self-certified external identity to
 // be associated with the certificate owner.
-const certificateType = 'jVNgF8+rifnz00856b4TkThCAvfiUE4p+t/aHYl1u0c='
+const certificateType = 'hzR38jMALB8MjX1+33hwskBj50HHGroCrD33J15PiXU='
 const certificateDefinition = {
     // The external identity's domain.
     domain: 'twitter.com',

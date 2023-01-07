@@ -16,9 +16,9 @@ module.exports = {
   summary: 'Identify Certifier by returning certifierPublicKey and certificateTypes.',
   exampleResponse: {
     status: 'success',
-    certifierPublicKey: '025384871bedffb233fdb0b4899285d73d0f0a2b9ad18062a062c01c8bdb2f720a',
+    certifierPublicKey: certifierPublicKey,
     certificateTypes: [
-      ['jVNgF8+rifnz00856b4TkThCAvfiUE4p+t/aHYl1u0c=', ['domain', 'identity', 'when', 'stake']]
+      [certificateType, certificateFields]
     ]
   },
   func: async (req, res) => {

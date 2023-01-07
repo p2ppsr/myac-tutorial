@@ -3,7 +3,7 @@ const bsv = require('babbage-bsv')
 const myac1 = require('./certificates/myac1Certificate')
 
 const certifierPrivateKey = process.env.SERVER_PRIVATE_KEY
-if (!certifierPrivateKey || certifierPrivateKey === '000000000000000000000000000000000000000000000000000000000000000001')
+if (!certifierPrivateKey || certifierPrivateKey === '0000000000000000000000000000000000000000000000000000000000000001')
     throw 'Please check your .env file and make sure you have a valid SERVER_PRIVATE_KEY (not the default)'
 
 const certifierPublicKey = bsv.PrivateKey.fromString(certifierPrivateKey).publicKey.toString()
