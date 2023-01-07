@@ -13,15 +13,6 @@ const HOSTING_DOMAIN = process.env.HOSTING_DOMAIN
 const HTTP_PORT = process.env.HTTP_PORT || 8081
 const ROUTING_PREFIX = process.env.ROUTING_PREFIX
 
-const {
-    certifierPrivateKey,
-    certifierPublicKey,
-    certificateType,
-    //certificateDefinition,
-    //certificateFields,
-    requestedTypesAndFields
-} = require('./certifier')
-
 const app = express()
 app.use(bodyparser.json())
 
@@ -64,24 +55,6 @@ app.use((req, res, next) => {
   next()
 })
 
-// Authrite is enforced from here forward
-app.use(authrite.middleware({
-
-  serverPrivateKey: certifierPrivateKey,
-
-  baseUrl: HOSTING_DOMAIN,
-
-  // Request our own certificates from clients:
-  requestedCertificates: {
-
-    // Specify the types and fields supported by confirmCertificate.
-    types: requestedTypesAndFields,
-
-    // The only certificates we handle are our own in confirmCertificate.
-    certifiers: [certifierPublicKey]
-  }
-}))
-
 // This adds all the API routes
 routes.forEach((route) => {
   app[route.type](`${ROUTING_PREFIX}${route.path}`, route.func)
@@ -100,6 +73,4 @@ app.use((req, res) => {
 // This starts myac server listening for requests
 app.listen(HTTP_PORT, () => {
   console.log('myac listening on port', HTTP_PORT)
-  console.log('Certifier:', certifierPublicKey)
-  console.log('Type ID:', certificateType)
 })
