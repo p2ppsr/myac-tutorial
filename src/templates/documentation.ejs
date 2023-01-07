@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Myac</title>
+    <style>
+      body {
+        font-family: Arial;
+        padding: 1em;
+      }
+      .main {
+        max-width: min(1440px, 100vw);
+        margin: auto;
+        word-wrap: break-word;
+      }
+      .method {
+        background-color: lime;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='main'>
+      <h1>MYAC</h1>
+      <p>
+        Example Authrite Certifier that issues self-certified alternate domain identity certificates.
+      </p>
+      <p>Learn more on <a href='https://github.com/p2ppsr/myac'>GitHub</a></p>
+      <p>To use this certifier to obtain certificates, go <a href='https://myac-ui.babbage.systems'>here</a>.</p>
+      <h2>Server Parameters</h2>
+      <p>This server's certifier public key is: <%= certifierPublicKey %></p>
+      <p>This server will issue certificates with type: <%= certificateType %></p>
+      <h2>Endpoint Documentation</h2>
+        <% for (let i in routes) { %>
+        <h3>
+          <b class='method'><%= routes[i].type %></b> <%= HOSTING_DOMAIN %><%= ROUTING_PREFIX %><%= routes[i].path %>
+        </h3>
+        <p>
+          <%= routes[i].summary %>
+        </p>
+        <% if (typeof routes[i].parameters === 'object') { %>
+          <h4>Parameters</h4>
+          <ul>
+            <% Object.entries(routes[i].parameters).forEach(([k, v]) => { %>
+              <li><b><%= k %></b>: <%= v %></li>
+            <% }) %>
+          </ul>
+        <% } %>
+        <% if (typeof routes[i].exampleBody === 'object') { %>
+          <h4>Example Request Body</h4>
+          <pre><%= JSON.stringify(routes[i].exampleBody, null, 2) %></pre>
+        <% } %>
+        <% if (typeof routes[i].exampleResponse === 'object') { %>
+          <h4>Example Response</h4>
+          <pre><%= JSON.stringify(routes[i].exampleResponse, null, 2) %></pre>
+        <% } %>
+      <% } %>
+      <p>Built with love in 2022 by the Babbage Team</p>
+    </div>
+  </body>
+</html>
