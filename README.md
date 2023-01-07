@@ -10,11 +10,15 @@ Branches are used to provide quick access to the state of the code at each step 
 
 | Branch | Tutorial Sequence |
 |---|---|
-| master | Completed tutorial |
-| deploy | Add Cloud Run deployment support |
-| docs | Add public certifier documentation |
-| database | Add issued certificate database support |
-| confirm | Add certificate confirmation |
-| create | Add certificate creation support |
-| identify | Add certifier identify support |
 | start | Add certifier key and certificate type |
+| identify | Add certifier identify support |
+| create | Add certificate creation support |
+| confirm | Add certificate confirmation |
+| database | Add issued certificate database support |
+| docs | Add public certifier documentation |
+| deploy | Add Cloud Run deployment support |
+| master | Completed tutorial |
+
+## License
+
+The license for the code in this repository is the Open BSV License.
