@@ -8,7 +8,8 @@ ejs.renderFile(
   {
     ...process.env,
     ...require('../src/certifier'),
-    routes: require('../src/routes')
+    routes: require('../src/routes'),
+    myac1: fs.readFileSync('src/certificates/myac1Certificate.js')
   },
   {},
   (err, res) => {
