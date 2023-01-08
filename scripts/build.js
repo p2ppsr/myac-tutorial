@@ -9,7 +9,7 @@ ejs.renderFile(
     ...process.env,
     ...require('../src/certifier'),
     routes: require('../src/routes'),
-    myac1: fs.readFileSync('/Kz/p2ppsr/bab480/myac-tutorial/src/certificates/myac1Certificate.js')
+    myac1: fs.readFileSync('src/certificates/myac1Certificate.js')
   },
   {},
   (err, res) => {
