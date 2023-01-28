@@ -27,3 +27,4 @@ data/database.sqlite
 /public/index.html
 data/myac_database.sqlite
 data/myac_database.sqbpro
+data/ac-mysql
