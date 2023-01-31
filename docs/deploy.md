@@ -1,6 +1,7 @@
 Deploying is broken down into the following steps:
 - Switch to production database.
 - Build cloud execution container images.
+- Configure cloud MySQL server.
 - Configure cloud container image storage.
 - Configure cloud certifier server and application services.
 - Automate process from source control.
@@ -46,7 +47,7 @@ Unlike Sqlite which runs as part of your executing process and uses a single fil
 
 Docker containers enable an entire execution environment to be configured, packaged as a single file, and scalably deployed to any cloud execution infrastructure.
 
-For the Certifier Server, three containers will be created:
+For local development work on the Certifier Server, three containers will be created:
 - Authrite Certifier Server: ac-server
 - MySQL Server: ac-mysql
 - MySQL Admin Web Interface: phpmyadmin
@@ -153,7 +154,7 @@ services:
 
 Docker Compose allows containers to be customized and combined by injecting environment variables and adjusting the file system and network ports.
 
-The first service in the `docker-compose.yml` file, `ac-server` specifies the container image will be built from the Docker file in this project. The `environment` section should mirror the `.env` file. We will be modifying how the `SERVER_PRIVATE_KEY` is configured later to ensure it is kept private from un-authorized parties.
+The first service in the `docker-compose.yml` file, `ac-server` specifies a container image will be built from the Docker file in this project. The `environment` section should mirror the `.env` file. We will be modifying how the `SERVER_PRIVATE_KEY` is configured later to ensure it is kept private from un-authorized parties.
 
 The second service in the `docker-compose.yml` file, `ac-mysql` customizes the `mysql:8.0` container image. The `MYSQL_ROOT_PASSWORD` will need privacy handling changes. Note that port `3001` must match the port number in both `start.sh` and `knexfile.js`.
 
@@ -161,9 +162,9 @@ The third service in the `docker-compose.yml` file, `ac-admin` customizes the `p
 
 There are more details and changes to cover, but you should be able to test your changes:
 
-`docker compose up --force-recreate --build -d
+`docker compose up --force-recreate --build -d`
 
-If you have Docker installed and running, this command should create a new parent container `myac-tutorial` containing three service containers: `ac-mysql-1`, `ac-server-1`, and `ac-admin-1`.
+If you have Docker installed and running, this command should create a new parent container `myac-tutorial` containing three service containers: `ac-server-1`, `ac-mysql-1` and `ac-admin-1`.
 
 Browsing to localhost:3002 should bring up the certifier server's API documentation page.
 
@@ -173,6 +174,7 @@ If you expand the `myac` database node, you should see the tables created by the
 
 In Docker, you should see three running containers and no errors.
 
+## Configure Cloud MySQL Server
 ## Configure Cloud Container Image Storage.
 ## Configure Cloud Certifier Server and Application Services.
 ## Automate Process From Source Control.
