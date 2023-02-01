@@ -145,7 +145,7 @@ services:
     environment:
       PMA_HOST: ac-mysql
       PMA_PORT: 3001
-      PMA_ARBITRARY: 1
+      PMA_ARBITRARY: 2
     restart: always
     ports:
     - 3003:80
@@ -161,7 +161,7 @@ The third service in the `docker-compose.yml` file, `ac-admin` customizes the `p
 
 There are more details and changes to cover, but you should be able to test your changes:
 
-`docker compose up --force-recreate --build -d
+`docker compose up --force-recreate --build -d`
 
 If you have Docker installed and running, this command should create a new parent container `myac-tutorial` containing three service containers: `ac-mysql-1`, `ac-server-1`, and `ac-admin-1`.
 
@@ -171,8 +171,76 @@ Browsing to localhost:3003 should bring up the phpMyAdmin website login. Enter `
 
 If you expand the `myac` database node, you should see the tables created by the `knex migrate:latest` command in the `start.sh` startup script.
 
+<img src="/img/Screenshot_20230128_124405.png" alt="mysql admin website" title="MySQL Admin Website" style="max-height:32vh;object-fit:scale-down;" />
+
 In Docker, you should see three running containers and no errors.
 
-## Configure Cloud Container Image Storage.
-## Configure Cloud Certifier Server and Application Services.
-## Automate Process From Source Control.
+By changing the `certifierServerUrl` to `localhost:3002` in the Certifier Application you can now continue developing locally while using MySQL as the backend server.
+
+This completes the changes to support MySQL, the next step is to deploy both the server and application website to the cloud to begin delivering Certifier service to the public.
+
+## Deployment Overview
+
+The Certifier, like most public services, relies on three parts to function:
+
+- Persistent backend database: MySQL
+- Secure backend web service for critical functions: Certifier Server
+- User interface website that supports client access: Certifier Application
+
+This tutorial will focus on the Google Cloud Platform (GCP) to host each function. There are many alternatives that will work similarly but the details will obviously vary.
+
+The goal is to automate the deployment process to enable the following workflow:
+
+1. Develop new functionality locally.
+2. Test the changes locally.
+3. Push or Merge the changes to `master` branch on GitHub.
+4. Changes are automatically deployed to GCP staging services.
+5. Test the changes over the public network.
+6. Merge the changes to `production` branch on GitHub.
+7. Changes are automatically deployed to GCP production services.
+8. Functionality is now live to all clients.
+
+For both `staging` and `production`, the process will target a GCP MySQL database and two Cloud Run services. Cloud Storage is used to store Docker images in an `Artifact Registry`.
+
+## Configure Cloud MySQL and Container Image Storage
+
+You will need a GCP account and project to complete the next part of the tutorial. Start here, console.cloud.google.com if you need to create one. You will need to enable a number of APIs as well such as `artifactregistry`, `compute`, `sqladmin`, `networkmanagement` and `domains`. Initially, it is possible, and recommended, to create one GCP `Service Account` with permission to use each of these APIs.
+
+To enable GitHub to deploy to GCP you will need the private key to a GCP `Service account`. Start here, https://console.cloud.google.com/iam-admin/serviceaccounts, and follow `Manage keys` on the `Actions` menu. When you add a new key to a service account, a private key file is downloaded. This file must be stored securely by you locally. It looks like this:
+
+```
+{
+    "type": "service_account",
+    "project_id": "computing-with-integrity",
+    "private_key_id": "7866ad0f4361a3a45105d797ce31dd3a72f01fa6",
+    "private_key": "-----BEGIN PRIVATE KEY-----...-----END PRIVATE KEY-----\n",
+    "client_email": "computing-with-integrity@appspot.gserviceaccount.com",
+    "client_id": "118333200141030300265",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/computing-with-integrity%40appspot.gserviceaccount.com"
+}
+```
+
+You will also need a `base64` encoded copy of this file. Generate it with the following unix command (use WSL on Windows) to generate `keyfile.txt` from `keyfile.json`:
+
+`cat keyfile.json | base64 > keyfile.txt`
+
+Resources are organized on GCP under projects. This tutorial will use the project name `computing-with-integrity` but you should create your own and make the changes to use it.
+
+Create a new GCP SQL instance running MySQL, start here https://console.cloud.google.com/sql. Make sure that the instance has a public IP address and that your service account has full access to it.
+
+Create two new databases on the SQL server instance: `prod-myac` and `staging-myac`.
+
+Create a user account with a password and give it access to both databases. This is appropriate for getting started, in time switch to more maintainable security options. Make a secure, local note of the database access account and password.
+
+Finally, make sure you have `Cloud Storage` configured with an `artifact` registry. Start here to verify: https://console.cloud.google.com/storage.
+
+## Automate Process From Source Control
+
+With the foundation in place on the Google Cloud Platform (GCP), begin to make the changes to enable deployment automation through GitHub repository Actions.
+
+
+
+## Configure Cloud Run Services
