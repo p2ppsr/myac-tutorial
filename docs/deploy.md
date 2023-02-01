@@ -74,7 +74,8 @@ This is what each line of the `Dockerfile` does:
 - When the container starts, use the shell to run `scripts/start.sh`
 
 Add the `start.sh` file which handles the startup of the Certifier server within its Docker contaner to the `scripts` project folder with the following contents:
-```
+
+```sh
 #!/bin/sh
 node 'scripts/build.js'
 
@@ -237,10 +238,355 @@ Create a user account with a password and give it access to both databases. This
 
 Finally, make sure you have `Cloud Storage` configured with an `artifact` registry. Start here to verify: https://console.cloud.google.com/storage.
 
+## Knex Change to Access Cloud MySQL
+
+Add the following at the start of `knexfile.js`:
+
+```
+require('dotenv').config()
+
+const deployMySql = {
+  client: 'mysql',
+  connection: process.env.KNEX_DB_CONNECTION
+    ? JSON.parse(process.env.KNEX_DB_CONNECTION)
+    : undefined,
+  useNullAsDefault: true,
+  migrations: {
+    directory: './src/migrations'
+  },
+  pool: {
+    min: 0,
+    max: 7,
+    idleTimeoutMillis: 15000
+  }
+}
+```
+
+And change the end of `knexfile.js` to:
+
+```
+const NODE_ENV = process.env.NODE_ENV
+const config
+  = NODE_ENV === 'production' ? deployMySql
+  : NODE_ENV === 'staging' ? deployMySql
+  : localMySql
+
+module.exports = config
+```
+
+And add the following to your `.env` file:
+
+`{"port":3306,"host":"<SQL instance public IP address>","user":"<SQL instance user name>","password":"<SQL instance user password>","database":"staging-myac"}`
+
 ## Automate Process From Source Control
 
 With the foundation in place on the Google Cloud Platform (GCP), begin to make the changes to enable deployment automation through GitHub repository Actions.
 
+In the Certifier Server project, add a `deploy.yaml` file in a nested new folder `.github/workflows` with the contents:
 
+```yaml
+name: Deployment
+on:
+  push:
+    branches:
+      - master
+      - production
+env:
+  CURRENT_BRANCH: ${{ github.ref_name =='production' && 'production' || 'master' }}
+  GCR_HOST: us.gcr.io
+  GOOGLE_PROJECT_ID: computing-with-integrity
+  GCR_IMAGE_NAME: myac-server
+jobs:
+  build:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: RafikFarhad/push-to-gcr-github-action@v4.1
+        with:
+          gcloud_service_key: ${{ secrets.DOCKER_REGISTRY_PUSH_KEY }}
+          registry: ${{ env.GCR_HOST }}
+          project_id: ${{ env.GOOGLE_PROJECT_ID }}
+          image_name: ${{ env.GCR_IMAGE_NAME }}
+          image_tag: ${{ env.CURRENT_BRANCH }}-${{ github.sha }}
+      - name: "Create service description file"
+        run: "./scripts/mkenv.sh service.${{ env.CURRENT_BRANCH }}.yaml"
+        env:
+          IMAGE: "${{ env.GCR_HOST }}/${{ env.GOOGLE_PROJECT_ID }}/${{ env.GCR_IMAGE_NAME }}:${{ env.CURRENT_BRANCH }}-${{ github.sha }}"
+          SERVICE: ${{ env.CURRENT_BRANCH =='production' && 'prod-myac-server' || 'staging-myac-server' }}
+          NODE_ENV: ${{ env.CURRENT_BRANCH == 'production' && 'production' || 'staging' }}
+          KNEX_DB_CONNECTION: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_KNEX_DB_CONNECTION || secrets.STAGING_KNEX_DB_CONNECTION }}
+          KNEX_DB_CLIENT: mysql
+          CERTIFIER_UI_URL: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_CERTIFIER_UI_URL || secrets.STAGING_CERTIFIER_UI_URL }}
+          SERVER_PRIVATE_KEY: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_SERVER_PRIVATE_KEY || secrets.STAGING_SERVER_PRIVATE_KEY }}
+          HOSTING_DOMAIN: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_HOSTING_DOMAIN || secrets.STAGING_HOSTING_DOMAIN }}
+          HTTP_PORT: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_HTTP_PORT || secrets.STAGING_HTTP_PORT }}
+          ROUTING_PREFIX: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_ROUTING_PREFIX || secrets.STAGING_ROUTING_PREFIX }}
+          ALLOW_HTTP: 'false'
+      - uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.gcp_deploy_creds }}
+      - uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          region: us-east4
+          metadata: "service.${{ env.CURRENT_BRANCH }}.yaml"
+```
+
+Overview of how `deploy.yaml` file works:
+
+1. The action triggers when a push occurs on branches `master` or `production`.
+2. Values are assigned to env variables not defined elsewhere.
+3. A single build job named Deploy is defined which will run on an ubuntu VM.
+4. The `RafikFarhad/push-to-gcr-github-action` step builds a Docker image and pushes it to the GCP artifact registry.
+5. A temporary `service.staging.yaml` file is created with `metadata` settings for the next step by running the new `scripts/mkenv.sh` shell script on the ubuntu VM.
+6. The `google-github-actions/deploy-cloudrun` step creates or updates a Cloud Run service to run the new Docker image.
+
+Add the new `mkenv.sh` file to the `scripts` folder with the contents:
+
+```sh
+#!/bin/bash
+
+echo "Creating $1"
+echo "apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: $SERVICE
+spec:
+  template:
+    spec:
+      timeoutSeconds: 3540
+      containers:
+      - image: $IMAGE
+        ports:
+          - containerPort: $HTTP_PORT
+        env:" > $1
+
+echo "Appending environment variables to $1"
+perl -E'
+  say "        - name: $_
+          value: \x27$ENV{$_}\x27" for @ARGV;
+' NODE_ENV \
+    SERVER_PRIVATE_KEY \
+    CERTIFIER_UI_URL \
+    HOSTING_DOMAIN \
+    HTTP_PORT \
+    ROUTING_PREFIX \
+    KNEX_DB_CONNECTION \
+    KNEX_DB_CLIENT \
+    ALLOW_HTTP >> $1
+
+echo "Built! Contents of $1:"
+cat $1
+```
+
+*Important Note*: Because this is a shell script that needs to run on the GitHub ubuntu deployment automation VM, it needs to have the `execute` flag set. Use the `chmod` command on unix, or on Windows use this git command:
+
+`git update-index --chmod=+x ./scripts/mkenv.sh`
+
+Overview of how `mkenv.sh` file works:
+
+1. The script file has access to all the env settings a top of deploy.yaml and this named run step.
+2. It builds a yaml file with the format required of the metadata for Cloud Run service creation.
+3. After a fixed format start, Perl adds name and value env properties for a list of variables.
+4. The contents of the generated file can be viewed on GitHub when and after the Deploy Action runs.
+
+*If this fails* when the action runs, make sure the file has the execute flag set in the Git index. See *Important Note* above.
+
+### Customizing the Automation
+
+Change `GOOGLE_PROJECT_ID` in `deploy.yaml` to match your GCP project identifier.
+
+Change `region` in `deploy.yaml` to match the region of your SQL instance for best performance.
+
+Possibly change `GCR_HOST` in `deploy.yaml` to match your Cloud Storage location.
+
+The remainder of the automation control settings are configured as repository `Secrets` on GitHub.
+Go to your GitHub repository `Settings` and under `Security` find `Secrets and variables`.
+The following table lists the secrets you must add and the value to assign:
+
+| Secret | Value |
+|---|---|
+| DOCKER_REGISTRY_PUSH_KEY | `<base64 contents of keyfile.txt for GCP Service Account with Cloud Storage permission>` |
+| GCP_DEPLOY_CREDS | `<json contents of keyfile.json for GCP Service Account with Cloud Run permission>` |
+| STAGING_KNEX_DB_CONNECTION | `{"port":3306,"host":"<SQL instance public IP address>","user":"<SQL instance user name>","password":"<SQL instance user password>","database":"staging-myac"}`|
+| STAGING_SERVER_PRIVATE_KEY | `<32 random bytes encoded as hex string, save secure copy locally>` |
+| STAGING_HOSTING_DOMAIN | `https://<your-domain-for-staging-certifier-server>` |
+| STAGING_CERTIFIER_UI_URL | `https://<your-domain-for-staging-certifier-ui>` |
+| STAGING_HTTP_PORT | `8081` |
+| STAGING_ROUTING_PREFIX | |
+| PROD_KNEX_DB_CONNECTION | `{"port":3306,"host":"<SQL instance public IP address>","user":"<SQL instance user name>","password":"<SQL instance user password>","database":"prod-myac"}`|
+| PROD_SERVER_PRIVATE_KEY | `<32 random bytes encoded as hex string, save secure copy locally>` |
+| PROD_HOSTING_DOMAIN | `https://<your-domain-for-production-certifier-server>` |
+| PROD_CERTIFIER_UI_URL | `https://<your-domain-for-production-certifier-ui>` |
+| PROD_HTTP_PORT | `8081` |
+| PROD_ROUTING_PREFIX | |
+
+### One Final Server Change
+
+Comment out the section in `scripts\start.sh` that waits for the SQL server to start:
+
+```sh
+#!/bin/sh
+node 'scripts/build.js'
+
+#until nc -z -v -w30 ac-mysql 3001
+#do
+#    echo "Waiting for database connection..."
+#    sleep 1
+#done
+knex migrate:latest
+node 'src/index.js'
+```
+
+## Rinse and Repeat for Certifier Application
+
+### First a little housekeeping:
+
+Add a new `.env` file with the contents:
+
+```sh
+REACT_APP_CERTIFIER_PUBLIC_KEY='025684945b734e80522f645b9358d4ac5b49e5180444b5911bf8285a7230edee8b'
+REACT_APP_CERTIFIER_SERVER_URL='http://localhost:8081'
+```
+
+Modify the `App.js` file to use the new environment variables:
+
+```js
+import * as dotenv from 'dotenv'
+dotenv.config()
+
+// The public key of the certifier at that URL, must match actual public key.
+const certifierPublicKey = process.env.REACT_APP_CERTIFIER_PUBLIC_KEY
+const certifierServerURL = process.env.REACT_APP_CERTIFIER_SERVER_URL
+```
+
+In the Certifier Application project, add a `deploy.yaml` file in a nested new folder `.github/workflows` with the contents:
+
+```yaml
+name: Deployment
+on:
+  push:
+    branches:
+      - master
+      - production
+env:
+  CURRENT_BRANCH: ${{ github.ref_name }}
+  GCR_HOST: us.gcr.io
+  GOOGLE_PROJECT_ID: computing-with-integrity
+  GCR_IMAGE_NAME: myac-ui
+
+jobs:
+  build:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: npm ci
+      - run: CI=true REACT_APP_CERTIFIER_SERVER_URL=${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_CERTIFIER_SERVER_URL || secrets.STAGING_CERTIFIER_SERVER_URL }} REACT_APP_CERTIFIER_PUBLIC_KEY=${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_CERTIFIER_PUBLIC_KEY || secrets.STAGING_CERTIFIER_PUBLIC_KEY }} REACT_APP_IS_STAGING=${{ env.CURRENT_BRANCH == 'master' }} npm run build
+      - uses: RafikFarhad/push-to-gcr-github-action@v4.1
+        with:
+          gcloud_service_key: ${{ secrets.DOCKER_REGISTRY_PUSH_KEY }}
+          registry: ${{ env.GCR_HOST }}
+          project_id: ${{ env.GOOGLE_PROJECT_ID }}
+          image_name: ${{ env.GCR_IMAGE_NAME }}
+          image_tag: ${{ env.CURRENT_BRANCH }}-latest
+      - uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.gcp_deploy_creds }}
+      - uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          service: ${{ env.CURRENT_BRANCH =='production' && 'prod-myac-ui' || 'staging-myac-ui' }}
+          image: "${{ env.GCR_HOST }}/${{ env.GOOGLE_PROJECT_ID }}/${{ env.GCR_IMAGE_NAME }}:${{ env.CURRENT_BRANCH }}-latest"
+          timeout: 3540
+          region: us-east4
+```
+
+Change `GOOGLE_PROJECT_ID` in `deploy.yaml` to match your GCP project identifier.
+
+Change `region` in `deploy.yaml` to match the region of your SQL instance and server for best performance.
+
+Possibly change `GCR_HOST` in `deploy.yaml` to match your Cloud Storage location.
+
+The remainder of the automation control settings are configured as repository `Secrets` on GitHub.
+Go to your GitHub repository `Settings` and under `Security` find `Secrets and variables`.
+The following table lists the secrets you must add and the value to assign:
+
+| Secret | Value |
+|---|---|
+| DOCKER_REGISTRY_PUSH_KEY | `<base64 contents of keyfile.txt for GCP Service Account with Cloud Storage permission>` |
+| GCP_DEPLOY_CREDS | `<json contents of keyfile.json for GCP Service Account with Cloud Run permission>` |
+| STAGING_CERTIFIER_PUBLIC_KEY | `<from certifier's home (Identify) page>` |
+| STAGING_CERTIFIER_SERVER_URL | `https://<your-domain-for-staging-certifier-server>` |
+| PROD_CERTIFIER_PUBLIC_KEY | `<from certifier's home (Identify) page>` |
+| PROD_CERTIFIER_SERVER_URL | `https://<your-domain-for-production-certifier-server>` |
+
+Add the following three files to the project. No changes are needed.
+
+Add `Dockerfile` with contents:
+
+```sh
+FROM nginx
+EXPOSE 8080
+COPY ./nginx.conf /etc/nginx/nginx.conf
+COPY ./build /usr/share/nginx/html
+```
+
+Add `docker-compose.yml` with contents:
+
+```yaml
+services:
+  web:
+    build: .
+    ports:
+    - 8080:8080
+```
+
+Add `nginx.conf` with contents:
+
+```sh
+user  nginx;
+worker_processes  auto;
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+events {
+    worker_connections  1024;
+}
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+    access_log  /var/log/nginx/access.log  main;
+    sendfile        on;
+    keepalive_timeout  65;
+    gzip  on;
+    server {
+        listen       8080 http2;
+        listen  [::]:8080 http2;
+        server_name  localhost;
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html;
+            try_files $uri /index.html;  
+        }
+    }
+}
+```
 
 ## Configure Cloud Run Services
+
+Commit the changes to your repositories and push them to GitHub on the `master` branch to trigger the execution of the deployment actions.
+
+You can monitor the progress on GitHub as the execute.
+
+Once both deployments run without errors, a final change is required to your Cloud Run services to enable public access and to use HTTP/2 for the Application website.
+
+On each Cloud Run service, go to `Security` tab and select `Allow unauthenticated invocations`.
+
+On the `myac-ui` service (Certifier Application), select `EDIT & DEPLOY NEW REVISION`. Switch to the `NETWORKING` tab. Check the `Use HTTP/2 end-to-end` box. Click `DEPLOY`.
+
+Congratulations, you've finished the tutorial!
