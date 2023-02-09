@@ -406,20 +406,20 @@ The following table lists the secrets you must add and the value to assign:
 
 | Secret | Value |
 |---|---|
-| DOCKER_REGISTRY_PUSH_KEY | `<base64 contents of keyfile.txt for GCP Service Account with Cloud Storage permission>` |
-| GCP_DEPLOY_CREDS | `<json contents of keyfile.json for GCP Service Account with Cloud Run permission>` |
-| STAGING_KNEX_DB_CONNECTION | `{"port":3306,"host":"<SQL instance public IP address>","user":"<SQL instance user name>","password":"<SQL instance user password>","database":"staging-myac"}`|
-| STAGING_SERVER_PRIVATE_KEY | `<32 random bytes encoded as hex string, save secure copy locally>` |
-| STAGING_HOSTING_DOMAIN | `https://<your-domain-for-staging-certifier-server>` |
-| STAGING_CERTIFIER_UI_URL | `https://<your-domain-for-staging-certifier-ui>` |
-| STAGING_HTTP_PORT | `8081` |
-| STAGING_ROUTING_PREFIX | |
-| PROD_KNEX_DB_CONNECTION | `{"port":3306,"host":"<SQL instance public IP address>","user":"<SQL instance user name>","password":"<SQL instance user password>","database":"prod-myac"}`|
-| PROD_SERVER_PRIVATE_KEY | `<32 random bytes encoded as hex string, save secure copy locally>` |
-| PROD_HOSTING_DOMAIN | `https://<your-domain-for-production-certifier-server>` |
-| PROD_CERTIFIER_UI_URL | `https://<your-domain-for-production-certifier-ui>` |
-| PROD_HTTP_PORT | `8081` |
-| PROD_ROUTING_PREFIX | |
+| `DOCKER_REGISTRY_PUSH_KEY` | `<base64 contents of keyfile.txt for GCP Service Account with Cloud Storage permission>` |
+| `GCP_DEPLOY_CREDS` | `<json contents of keyfile.json for GCP Service Account with Cloud Run permission>` |
+| `STAGING_KNEX_DB_CONNECTION` | `{"port":3306,"host":"<SQL instance public IP address>","user":"<SQL instance user name>","password":"<SQL instance user password>","database":"staging-myac"}`|
+| `STAGING_SERVER_PRIVATE_KEY` | `<32 random bytes encoded as hex string, save secure copy locally>` |
+| `STAGING_HOSTING_DOMAIN` | `https://<your-domain-for-staging-certifier-server>` |
+| `STAGING_CERTIFIER_UI_URL` | `https://<your-domain-for-staging-certifier-ui>` |
+| `STAGING_HTTP_PORT` | `8081` |
+| `STAGING_ROUTING_PREFIX` | |
+| `PROD_KNEX_DB_CONNECTION` | `{"port":3306,"host":"<SQL instance public IP address>","user":"<SQL instance user name>","password":"<SQL instance user password>","database":"prod-myac"}`|
+| `PROD_SERVER_PRIVATE_KEY` | `<32 random bytes encoded as hex string, save secure copy locally>` |
+| `PROD_HOSTING_DOMAIN` | `https://<your-domain-for-production-certifier-server>` |
+| `PROD_CERTIFIER_UI_URL` | `https://<your-domain-for-production-certifier-ui>` |
+| `PROD_HTTP_PORT` | `8081` |
+| `PROD_ROUTING_PREFIX` | |
 
 ### One Final Server Change
 
@@ -516,12 +516,12 @@ The following table lists the secrets you must add and the value to assign:
 
 | Secret | Value |
 |---|---|
-| DOCKER_REGISTRY_PUSH_KEY | `<base64 contents of keyfile.txt for GCP Service Account with Cloud Storage permission>` |
-| GCP_DEPLOY_CREDS | `<json contents of keyfile.json for GCP Service Account with Cloud Run permission>` |
-| STAGING_CERTIFIER_PUBLIC_KEY | `<from certifier's home (Identify) page>` |
-| STAGING_CERTIFIER_SERVER_URL | `https://<your-domain-for-staging-certifier-server>` |
-| PROD_CERTIFIER_PUBLIC_KEY | `<from certifier's home (Identify) page>` |
-| PROD_CERTIFIER_SERVER_URL | `https://<your-domain-for-production-certifier-server>` |
+| `DOCKER_REGISTRY_PUSH_KEY` | `<base64 contents of keyfile.txt for GCP Service Account with Cloud Storage permission>` |
+| `GCP_DEPLOY_CREDS` | `<json contents of keyfile.json for GCP Service Account with Cloud Run permission>` |
+| `STAGING_CERTIFIER_PUBLIC_KEY` | `<from certifier's home (Identify) page>` |
+| `STAGING_CERTIFIER_SERVER_URL` | `https://<your-domain-for-staging-certifier-server>` |
+| `PROD_CERTIFIER_PUBLIC_KEY` | `<from certifier's home (Identify) page>` |
+| `PROD_CERTIFIER_SERVER_URL` | `https://<your-domain-for-production-certifier-server>` |
 
 Add the following three files to the project. No changes are needed.
 
